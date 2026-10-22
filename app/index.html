@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>wiiOS</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="stage">
+    <!-- The channels of every page side by side; the whole strip slides when the page turns. -->
+    <div id="strip"></div>
+
+    <canvas id="arrowL" class="arrow"></canvas>
+    <canvas id="arrowR" class="arrow"></canvas>
+    <!-- Buttons: a body painted once and a glow that fades in on focus while the button zooms. -->
+    <div id="btnL" class="button"><canvas class="body"></canvas><canvas class="glow"></canvas></div>
+    <div id="btnR" class="button"><canvas class="body"></canvas><canvas class="glow"></canvas></div>
+    <div id="sd" class="button"><canvas class="body"></canvas><canvas class="glow"></canvas></div>
+    <canvas id="clock" class="still"></canvas>
+    <canvas id="colon" class="still"></canvas>
+    <canvas id="hand" class="still"></canvas>
+
+    <!-- Inputs: HDMI ports and live TV. -->
+    <div id="menu"><canvas id="menuPanel"></canvas></div>
+
+    <!-- The notice screen at power-on. -->
+    <div id="intro">
+      <canvas id="warn" width="100" height="100"></canvas>
+      <div id="introTitle"></div>
+      <div id="introLine"></div>
+      <div id="introBody"></div>
+      <div id="introContinue"><span id="introOk">OK</span><span id="introText"></span></div>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="apps.js"></script>
+  <script src="wii.js"></script>
+</body>
+</html>

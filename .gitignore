@@ -1,0 +1,12 @@
+# Read from your TV by tools/sync.py
+app/apps.js
+app/icons/
+
+# Your own sounds (see README); not distributed
+app/sounds/custom/
+
+# Built by tools/install.py
+build/
+
+__pycache__/
+.DS_Store

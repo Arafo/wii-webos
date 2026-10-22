@@ -1,0 +1,14 @@
+{
+  "id": "org.wiiwebos.menu",
+  "version": "0.2.0",
+  "vendor": "wii-webos",
+  "type": "web",
+  "main": "index.html",
+  "title": "wiiOS",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "bgColor": "#e9e9e9",
+  "iconColor": "#f2f2f2",
+  "resolution": "1920x1080",
+  "disableBackHistoryAPI": true
+}
