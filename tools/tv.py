@@ -132,6 +132,27 @@ class TV:
             i += 1
         return bytes(out)
 
+    # ---- apps ----------------------------------------------------------------------------------
+
+    def close_app(self, app_id):
+        self.run("luna-send -n 1 luna://com.webos.applicationManager/closeByAppId '{\"id\":\"%s\"}'" % app_id)
+
+    def launch_app(self, app_id):
+        self.check("luna-send -n 1 luna://com.webos.applicationManager/launch '{\"id\":\"%s\"}'" % app_id)
+
+    def install_ipk(self, path):
+        """Installs a local .ipk with the appInstallService call LG's `ares-install` makes, which a root
+        shell may use without Developer Mode."""
+        with FileServer(self, serve_dir=os.path.dirname(os.path.abspath(path))) as fs:
+            out = self.check(
+                "curl -s -f -o /tmp/wii-install.ipk %s/%s && "
+                "luna-send -w 120000 -i luna://com.webos.appInstallService/dev/install "
+                "'{\"id\":\"com.ares.defaultName\",\"ipkUrl\":\"/tmp/wii-install.ipk\",\"subscribe\":true}' "
+                "| grep -m 1 -E '\"state\": ?\"(installed|failed)\"|errorText'; rm -f /tmp/wii-install.ipk"
+                % (fs.url, os.path.basename(path)), timeout=240)
+        if '"installed"' not in out.replace(" ", ""):
+            raise RuntimeError("Install failed:\n" + out)
+
     # ---- network -------------------------------------------------------------------------------
 
     def local_ip(self):
@@ -171,7 +192,6 @@ class FileServer:
                     f.write(self.rfile.read(n))
                 self.send_response(201)
                 self.end_headers()
-
 
             def log_message(self, *a):
                 pass

@@ -1,5 +1,7 @@
-# Read from your TV by tools/sync.py
+# Read from your TV by tools/sync.py and tools/games.py
 app/apps.js
+app/games.js
+app/covers/
 app/icons/
 
 # Your own sounds (see README); not distributed

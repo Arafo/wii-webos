@@ -1,6 +1,6 @@
 {
   "id": "org.wiiwebos.menu",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "vendor": "wii-webos",
   "type": "web",
   "main": "index.html",

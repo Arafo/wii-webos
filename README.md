@@ -60,12 +60,63 @@ envelope lists the inputs and live TV.
 ## Configure
 
 Edit [`app/config.js`](app/config.js), then run the install command again: which apps come first,
-apps to hide, what the buttons open, the left button's text, sounds, the notice screen, and the
-language (English or Spanish; it follows the TV). For app ids:
+apps to hide, what the buttons open, the left button's text, sounds, the Games channel, the notice
+screen and the language (English or Spanish; it follows the TV). For app ids:
 
 ```sh
 python3 tools/sync.py 192.168.1.50 --list
 ```
+
+## Games
+
+The Games channel, first in the menu, plays Game Boy, Game Boy Color and Game Boy Advance games in
+[RetroArch](https://github.com/webosbrew/RetroArch) with the mGBA core. Its tile is a pixel-art meadow
+with a little runner; inside, your games are cartridges on a shelf: pick one and press Play (or OK).
+The project ships no games: use only games you own.
+
+![The Games channel's shelf with five Game Boy Advance games](docs/games.jpg)
+
+1. **Set RetroArch up** (once, and again after RetroArch updates):
+
+   ```sh
+   python3 tools/games.py 192.168.1.50 --setup
+   ```
+
+   It installs RetroArch from the Homebrew Channel repository if it's missing (checking the published
+   SHA-256), the mGBA core from webosbrew's core server (checking its CRC32), and a small launch script
+   inside RetroArch: RetroArch's webOS port ignores launch parameters, so the script reads the game and
+   core from them, which is how the menu starts a game. It also sets RetroArch up for the remote and the
+   TV, keeping the old settings in `retroarch.cfg.before-wii-webos`. Re-run it after a RetroArch update,
+   which replaces the script.
+
+2. **Add your games** (`.gba`, `.gb` or `.gbc`):
+
+   ```sh
+   python3 tools/games.py 192.168.1.50 add "My game.gba" --title "My game"
+   ```
+
+   The title defaults to the file name without region tags; `--color "#E8432E"` sets the label colour.
+   `--list` shows the games and `remove "My game"` takes one off (`--delete` also deletes its file). The
+   menu picks up the change straight away.
+
+   **Covers.** `add` fetches the game's box art from libretro's thumbnail server, the one RetroArch
+   uses, when the file is named as in the No-Intro sets (`Game Name (USA).gba`). A game with a cover
+   stands on the shelf as its box; a game without one is a pixel cartridge with a coloured label. `--cover picture.png` (or `.jpg`) uses
+   your own image instead. Covers stay on your computer and TV (`app/covers/` is git-ignored): box art
+   belongs to its publishers.
+
+In a game, the remote plays as the handheld:
+
+| Remote | Game |
+| --- | --- |
+| Arrows | D-pad |
+| OK | A |
+| Back | B (a tap: the webOS port can't hold it) |
+| Red, Green, Yellow, Blue | Start, Select, L, R |
+| Hold red for two seconds | RetroArch's menu (save, load, quit) |
+
+In-game saves reach the file within ten seconds. Threaded video is on: without it the sound crackles on
+a webOS 4 TV.
 
 ## Your own sounds
 
@@ -102,7 +153,7 @@ in `app/config.js`. The folder is git-ignored, so your sounds stay on your compu
 ## Limitations
 
 - It's an app you open from LG's launcher. It doesn't take over the Home button or start with the TV.
-- The Mii and Games channels from wii-tv aren't ported.
+- The Mii channel from wii-tv isn't ported, and the Games channel's meadow holds still.
 - Text is in English and Spanish only.
 
 ## Files
@@ -112,12 +163,17 @@ in `app/config.js`. The folder is git-ignored, so your sounds stay on your compu
 | [`app/`](app/) | The menu: `index.html`, `style.css`, `wii.js`, `config.js`, `appinfo.json`, images and sounds |
 | [`tools/install.py`](tools/install.py) | Reads the TV's apps, packages the .ipk, installs and opens it, or removes it |
 | [`tools/sync.py`](tools/sync.py) | Reads apps, icons and inputs from the TV into `app/apps.js` and `app/icons/` |
+| [`tools/games.py`](tools/games.py) | Sets RetroArch up for the Games channel and adds, lists and removes games |
 | [`tools/tv.py`](tools/tv.py) | Runs commands on the TV as root and moves files over HTTP |
 
 ## Credits and licence
 
 - [wii-tv](https://github.com/MauroProto/wii-tv) by MauroProto (MIT): the menu's design, geometry,
-  colours, drawing and synthesised sounds, ported from `WiiMenuView`, `WiiBase` and `WiiPalette`.
+  colours, drawing and synthesised sounds, ported from `WiiMenuView`, `WiiBase` and `WiiPalette`; the
+  Games channel's pixel art, shelf and remote layout, from `PixelArt`, `PixelScene`, `GamesView` and
+  `tools/games/add.py`.
+- [RetroArch for webOS](https://github.com/webosbrew/RetroArch) by webosbrew (GPLv3), installed
+  separately; it isn't part of this repository.
 - [cleanyourtv](https://github.com/Gathin23/cleanyourtv) by Gathin (MIT): the base wii-tv is built on.
 - [webos-vibehack](https://github.com/OmkarK97/webos-vibehack) by OmkarK97 (MIT): the approach for
   webOS, reading apps from a computer and calling the luna bus from a web app.

@@ -33,6 +33,9 @@ window.CONFIG = {
     start: 'custom/start.wav'      // OK on the notice screen
   },
 
+  // The Games channel, shown once RetroArch is set up with tools/games.py (see README).
+  gamesChannel: true,
+
   // The white notice screen when the menu starts.
   intro: true,
 

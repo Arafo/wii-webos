@@ -16,7 +16,7 @@ import tarfile
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from tv import TV, FileServer, host_from_args  # noqa: E402
+from tv import TV, host_from_args  # noqa: E402
 from sync import sync  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -86,18 +86,13 @@ def package():
 
 def install(tv, app_id, name):
     # A running copy would only be brought forward by the launch below, still on the old code.
-    tv.run("luna-send -n 1 luna://com.webos.applicationManager/closeByAppId '{\"id\":\"%s\"}'" % app_id)
-    with FileServer(tv, serve_dir=BUILD) as fs:
-        out = tv.check(
-            "curl -s -f -o /tmp/wiiwebos.ipk %s/%s && "
-            "luna-send -w 60000 -i luna://com.webos.appInstallService/dev/install "
-            "'{\"id\":\"com.ares.defaultName\",\"ipkUrl\":\"/tmp/wiiwebos.ipk\",\"subscribe\":true}' "
-            "| grep -m 1 -E '\"state\": ?\"(installed|failed)\"|errorText'; rm -f /tmp/wiiwebos.ipk"
-            % (fs.url, name), timeout=120)
-    if '"installed"' not in out.replace(" ", ""):
-        sys.exit("Install failed:\n" + out)
+    tv.close_app(app_id)
+    try:
+        tv.install_ipk(os.path.join(BUILD, name))
+    except RuntimeError as e:
+        sys.exit(str(e))
     print("Installed %s." % app_id)
-    tv.check("luna-send -n 1 luna://com.webos.applicationManager/launch '{\"id\":\"%s\"}'" % app_id)
+    tv.launch_app(app_id)
     print("Opened it on the TV.")
 
 

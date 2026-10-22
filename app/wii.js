@@ -55,7 +55,7 @@
   var SEGMENT_ORDER = [0x01, 0x08, 0x20, 0x02, 0x10, 0x04, 0x40];
 
   var BTN_SETTINGS = -1, BTN_SD = -2, BTN_INPUTS = -3;
-  var KEY = { LEFT: 37, UP: 38, RIGHT: 39, DOWN: 40, OK: 13, BACK: 461, ESC: 27, BACKSPACE: 8 };
+  var KEY = { LEFT: 37, UP: 38, RIGHT: 39, DOWN: 40, OK: 13, BACK: 461, ESC: 27, BACKSPACE: 8, PLAY: 415 };
   var INTRO_AUTO_MS = 12000;
 
   // ---- strings ------------------------------------------------------------------------------------
@@ -67,7 +67,11 @@
         'Your apps, the HDMI inputs and live TV are where they always were.',
       introContinue: 'Press OK to continue.',
       inputs: 'Inputs', liveTv: 'Live TV',
-      days: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], monthFirst: true
+      days: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], monthFirst: true,
+      games: 'Games', wiiMenu: 'Wii Menu', play: 'Play',
+      gamesEmptyTitle: 'No games yet', gamesEmptyBody: 'Add them from your computer with tools/games.py.',
+      gamesMissing: 'Set RetroArch up with tools/games.py --setup to play.',
+      keyA: 'OK: A', keyB: 'Back: B', keyMenu: 'Hold red: RetroArch menu'
     },
     es: {
       introTitle: 'Antes de empezar',
@@ -75,7 +79,11 @@
         'Tus aplicaciones, las entradas HDMI y la TV en directo están donde siempre.',
       introContinue: 'Pulsa OK para continuar.',
       inputs: 'Entradas', liveTv: 'TV en directo',
-      days: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'], monthFirst: false
+      days: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'], monthFirst: false,
+      games: 'Juegos', wiiMenu: 'Menú Wii', play: 'Jugar',
+      gamesEmptyTitle: 'Todavía no hay juegos', gamesEmptyBody: 'Añádelos desde el ordenador con tools/games.py.',
+      gamesMissing: 'Prepara RetroArch con tools/games.py --setup para jugar.',
+      keyA: 'OK: A', keyB: 'Atrás: B', keyMenu: 'Mantén el rojo: menú de RetroArch'
     }
   };
   var LANG = String(CFG.language || navigator.language || 'en').slice(0, 2).toLowerCase();
@@ -250,12 +258,23 @@
   // ---- channels -----------------------------------------------------------------------------------
 
   var channels = [];
+  var GAMES = window.TV_GAMES || null;
+
+  // The Games channel comes first once RetroArch is set up (tools/games.py); RetroArch then has no
+  // channel of its own, as in wii-tv.
+  function hasGamesChannel() {
+    return !!GAMES && CFG.gamesChannel !== false && (GAMES.ready || GAMES.games.length > 0);
+  }
 
   function buildChannels() {
-    var hidden = CFG.hiddenApps || [];
+    var hidden = (CFG.hiddenApps || []).slice();
     var byId = {};
     DATA.apps.forEach(function (a) { byId[a.id] = a; });
     var order = [];
+    if (hasGamesChannel()) {
+      order.push({ id: '@games', title: T.games, special: 'games' });
+      hidden.push(GAMES.app);
+    }
     (CFG.firstApps || []).forEach(function (id) {
       if (byId[id] && hidden.indexOf(id) < 0 && order.indexOf(byId[id]) < 0) order.push(byId[id]);
     });
@@ -308,6 +327,10 @@
     var icon = ch.icon && ch.icon.ready ? ch.icon : null;
     c.fillStyle = '#ffffff';
     c.fillRect(0, 0, ART_W, ART_H);
+    if (ch.app.special === 'games') {
+      drawScene(c, ART_W, ART_H, 0.2, 1.5, T.games);
+      return;
+    }
 
     if (icon) {
       if (ch.fill === undefined) ch.fill = edgeColour(icon) || ch.app.iconColor || '';
@@ -336,6 +359,280 @@
     c.fillStyle = '#7a7a7a';
     c.textAlign = 'center';
     c.fillText(ellipsize(c, ch.app.title, ART_W * 0.86), ART_W / 2, ART_H * 0.55);
+  }
+
+  // ---- pixel art (Games channel) ------------------------------------------------------------------
+
+  // Ported from wii-tv's PixelArt and PixelScene: sprites from rows of characters, a 5 x 7 font, game
+  // cartridges, and the channel's meadow with the little runner. wii-tv animates the meadow; here it is
+  // drawn once, at the moment the runner jumps for a gem.
+
+  // Rows of A-Z, 5 bits each, leftmost pixel in bit 4.
+  var FONT = [
+    [0x0E, 0x11, 0x11, 0x1F, 0x11, 0x11, 0x11], [0x1E, 0x11, 0x11, 0x1E, 0x11, 0x11, 0x1E],
+    [0x0E, 0x11, 0x10, 0x10, 0x10, 0x11, 0x0E], [0x1E, 0x11, 0x11, 0x11, 0x11, 0x11, 0x1E],
+    [0x1F, 0x10, 0x10, 0x1E, 0x10, 0x10, 0x1F], [0x1F, 0x10, 0x10, 0x1E, 0x10, 0x10, 0x10],
+    [0x0E, 0x11, 0x10, 0x17, 0x11, 0x11, 0x0F], [0x11, 0x11, 0x11, 0x1F, 0x11, 0x11, 0x11],
+    [0x0E, 0x04, 0x04, 0x04, 0x04, 0x04, 0x0E], [0x07, 0x02, 0x02, 0x02, 0x02, 0x12, 0x0C],
+    [0x11, 0x12, 0x14, 0x18, 0x14, 0x12, 0x11], [0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x1F],
+    [0x11, 0x1B, 0x15, 0x15, 0x11, 0x11, 0x11], [0x11, 0x11, 0x19, 0x15, 0x13, 0x11, 0x11],
+    [0x0E, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0E], [0x1E, 0x11, 0x11, 0x1E, 0x10, 0x10, 0x10],
+    [0x0E, 0x11, 0x11, 0x11, 0x15, 0x12, 0x0D], [0x1E, 0x11, 0x11, 0x1E, 0x14, 0x12, 0x11],
+    [0x0F, 0x10, 0x10, 0x0E, 0x01, 0x01, 0x1E], [0x1F, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04],
+    [0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0E], [0x11, 0x11, 0x11, 0x11, 0x11, 0x0A, 0x04],
+    [0x11, 0x11, 0x11, 0x15, 0x15, 0x15, 0x0A], [0x11, 0x11, 0x0A, 0x04, 0x0A, 0x11, 0x11],
+    [0x11, 0x11, 0x0A, 0x04, 0x04, 0x04, 0x04], [0x1F, 0x01, 0x02, 0x04, 0x08, 0x10, 0x1F]
+  ];
+  var GAME_PALETTE = ['#e8432e', '#2f7de1', '#3fa34d', '#f29d16', '#8e5bd8', '#16a9a4', '#e5508c'];
+
+  // '#rrggbb' or '#aarrggbb' as [r, g, b, a].
+  function rgbOf(hex) {
+    var s = hex.slice(1), a = 255;
+    if (s.length === 8) { a = parseInt(s.slice(0, 2), 16); s = s.slice(2); }
+    return [parseInt(s.slice(0, 2), 16), parseInt(s.slice(2, 4), 16), parseInt(s.slice(4, 6), 16), a];
+  }
+
+  function mix(a, b, t) {
+    var x = rgbOf(a), y = rgbOf(b), out = '#';
+    for (var i = 0; i < 3; i++) out += ('0' + Math.round(x[i] * (1 - t) + y[i] * t).toString(16)).slice(-2);
+    return out;
+  }
+
+  // A canvas of w x h pixels, each coloured by colorAt(x, y): a '#rrggbb' or '#aarrggbb', or nothing.
+  function pixelCanvas(w, h, colorAt) {
+    var cv = makeCanvas(w, h), c = cv.getContext('2d'), img = c.createImageData(w, h), d = img.data;
+    for (var y = 0; y < h; y++) {
+      for (var x = 0; x < w; x++) {
+        var col = colorAt(x, y);
+        if (!col) continue;
+        var v = rgbOf(col), o = (y * w + x) * 4;
+        d[o] = v[0]; d[o + 1] = v[1]; d[o + 2] = v[2]; d[o + 3] = v[3];
+      }
+    }
+    c.putImageData(img, 0, 0);
+    return cv;
+  }
+
+  // A sprite from rows of characters, one pixel each; colors maps a character to its colour.
+  function sprite(rows, colors) {
+    var w = 0;
+    rows.forEach(function (r) { w = Math.max(w, r.length); });
+    return pixelCanvas(w, rows.length, function (x, y) { return colors[rows[y].charAt(x)]; });
+  }
+
+  // The word in capitals without accents, or null when the font has no glyph for one of its letters.
+  function fontText(word) {
+    var plain = String(word).normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
+    return plain && /^[A-Z ]+$/.test(plain) ? plain : null;
+  }
+
+  function glyphOn(g, x, y) { return x >= 0 && y >= 0 && x < 5 && y < 7 && (g[y] & (0x10 >> x)) !== 0; }
+
+  // The word in the 5 x 7 font: a fill with a lighter top row, a one-pixel outline and a drop shadow.
+  function pixelWord(text, fill, top, outline, shadow) {
+    var w = -1, i;
+    for (i = 0; i < text.length; i++) w += text.charAt(i) === ' ' ? 4 : 6;
+    var bw = w + 2, bh = 10, on = [], row = [], x0 = 1;
+    for (i = 0; i < text.length; i++) {
+      var ch = text.charAt(i);
+      if (ch === ' ') { x0 += 4; continue; }
+      var g = FONT[ch.charCodeAt(0) - 65];
+      for (var y = 0; y < 7; y++) {
+        for (var x = 0; x < 5; x++) {
+          if (glyphOn(g, x, y)) { on[(y + 1) * bw + x0 + x] = true; row[(y + 1) * bw + x0 + x] = y; }
+        }
+      }
+      x0 += 6;
+    }
+    function near(x, y) {
+      for (var dy = -1; dy <= 1; dy++) {
+        for (var dx = -1; dx <= 1; dx++) {
+          var xx = x + dx, yy = y + dy;
+          if (xx >= 0 && yy >= 0 && xx < bw && yy < bh && on[yy * bw + xx]) return true;
+        }
+      }
+      return false;
+    }
+    return pixelCanvas(bw, bh, function (x, y) {
+      if (on[y * bw + x]) return row[y * bw + x] === 0 ? top : fill;
+      if (near(x, y)) return outline;
+      if (y > 0 && near(x, y - 1)) return shadow;
+      return null;
+    });
+  }
+
+  // The first letter of the title the font can draw, accents dropped.
+  function initial(title) {
+    var plain = String(title).normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
+    for (var i = 0; i < plain.length; i++) if (/[A-Z]/.test(plain.charAt(i))) return plain.charAt(i);
+    return '';
+  }
+
+  var CART_W = 24, CART_H = 28;
+
+  // A game cartridge: a grey shell with grip grooves, a label in the game's colour with the title's
+  // initial, and the gold contacts under it.
+  function cartridge(color, title) {
+    var w = CART_W, h = CART_H, end = h - 4;
+    var OUT = '#3e444e', BODY = '#b8bec7', LIGHT = '#dde1e6', DARK = '#8d949f';
+    function inside(x, y) {
+      if (x < 0 || y < 0 || x >= w || y >= h) return false;
+      var corner = (x === 0 || x === w - 1) && (y === 0 || y === end);
+      return (y <= end && !corner) || (y > end && x >= 4 && x <= w - 5);
+    }
+    var letter = initial(title), g = letter ? FONT[letter.charCodeAt(0) - 65] : null;
+    var ink = mix(color, '#000000', 0.45);
+    function glyphAt(x, y) {
+      if (!g) return null;
+      var gx = x - 9, gy = y - 9;
+      if (glyphOn(g, gx, gy)) return '#ffffff';
+      for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) if (glyphOn(g, gx + dx, gy + dy)) return ink;
+      return null;
+    }
+    return pixelCanvas(w, h, function (x, y) {
+      if (!inside(x, y)) return null;
+      if (y >= 6 && y <= 19 && x >= 3 && x <= w - 4) {
+        var lbl = glyphAt(x, y);
+        if (lbl && y > 6 && y < 19 && x > 3 && x < w - 4) return lbl;
+        if (y === 6 || x === 3) return DARK;
+        if (y === 19 || x === w - 4) return LIGHT;
+        if (y === 7) return mix(color, '#ffffff', 0.35);
+        if (y === 17) return mix(color, '#ffffff', 0.5);
+        if (y === 18) return mix(color, '#000000', 0.25);
+        return color;
+      }
+      if (x >= 3 && x <= w - 4 && y >= 2 && y <= 4) return y === 3 ? LIGHT : DARK;
+      var edge = !inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1);
+      if (edge) return OUT;
+      if (y > end) return x % 2 === 1 ? (y === h - 2 ? '#c9952a' : '#f2c14e') : '#6b5320';
+      if (y === end) return OUT;
+      if (x === 1 || y === 1) return LIGHT;
+      if (x === w - 2 || y === end - 1) return DARK;
+      return BODY;
+    });
+  }
+
+  // ---- the meadow (PixelScene) --------------------------------------------------------------------
+
+  var SCENE = null;
+  var ROWS = 60, GROUND = 52, SPACING = 64, FIRST_ROCK = 40, JUMP_H = 10, JUMP_HALF = 16;
+  var SKY = ['#6ec3ee', '#84cdf1', '#9ad6f4', '#b0dff6', '#c6e8f9', '#daf1fb'];
+
+  function hills(w, h, base, a1, a2, f2, phase, fill, top, dot) {
+    var heights = [];
+    for (var x = 0; x < w; x++) {
+      var v = base + a1 * Math.sin(2 * Math.PI * x / w) + a2 * Math.sin(2 * Math.PI * f2 * x / w + phase);
+      heights.push(Math.max(0, h - Math.round(v)));
+    }
+    return pixelCanvas(w, h, function (x, y) {
+      var y0 = heights[x];
+      if (y < y0) return null;
+      if (y === y0) return top;
+      return y > y0 + 1 && (x * 7 + y * 13) % 11 === 0 ? dot : fill;
+    });
+  }
+
+  function sceneSprites() {
+    if (SCENE) return SCENE;
+    var blob = { k: '#1d5a80', b: '#3fc0ec', l: '#b5ecfc', w: '#ffffff', p: '#ff9db8' };
+    var body = ['...kkkkkk...', '.kkbbbbbbkk.', '.kbllbbbbbk.', 'kblbbbbbbbbk', 'kbbbbbbwwbwk',
+      'kbbbbbbwkbkk', 'kbbbbbbbbbbk', 'kbbbbbpbbbpk', 'kbbbbbbbbbbk', '.kbbbbbbbbk.'];
+    var gold = { k: '#9a5b00', w: '#fffbd6', y: '#ffd02e', o: '#f29d16' };
+    var sky = { w: '#ffffff', s: '#d3ecf8' };
+    SCENE = {
+      jump: sprite(body.concat(['.kkkkkkkkkk.', 'kk........kk']), blob),
+      runA: sprite(body.concat(['..kkkkkkkk..', '..kk....kk..']), blob),
+      gem: sprite(['..kkk..', '.kwyyk.', 'kwyyyok', 'kyyyyok', '.kyyok.', '..kok..', '...k...'], gold),
+      rock: sprite(['...kkk...', '..kllgk..', '.klggggk.', 'kgggggddk', 'kgggdgddk', 'kkkkkkkkk'],
+        { k: '#56606b', l: '#e0e5ea', g: '#afb8c2', d: '#8a94a0' }),
+      cloud: sprite(['......wwww..........', '....wwwwwwww..www...', '..wwwwwwwwwwwwwwwww.',
+        '.wwwwwwwwwwwwwwwwwww', 'wwwwwwwwwwwwwwwwwwww', 'wwwwwwwwwwwwwwwwwwww', '.ssssssssssssssssss.'], sky),
+      cloudSmall: sprite(['...wwww.....', '.wwwwwwwww..', 'wwwwwwwwwwww', 'wwwwwwwwwwww', '.ssssssssss.'], sky),
+      flowers: ['#ff6b6b', '#ffffff', '#ff9edb'].map(function (petal) {
+        return sprite(['.r.', 'rcr', '.r.', '.g.'], { r: petal, c: '#ffd43b', g: '#3e9a3a' });
+      }),
+      hillsFar: hills(96, 20, 10, 4, 2.5, 3, 1.3, '#a9ddb8', '#c9edd2', '#9bd3ab'),
+      hillsNear: hills(64, 13, 6, 3, 1.5, 2, 0.4, '#71c68b', '#95d9a6', '#63b97e'),
+      ground: pixelCanvas(32, 9, function (x, y) {
+        if (y === 0) return x % 4 === 1 || x % 16 === 10 ? '#6cc653' : null;
+        if (y === 1) return '#8bdb6a';
+        if (y === 2) return '#63c04e';
+        if (y === 3) return x % 4 < 2 ? '#4fa63f' : '#63c04e';
+        var hsh = (x * 31 + y * 17) % 23;
+        return hsh === 0 ? '#b57e45' : hsh === 7 ? '#e4b27c' : '#d29a5f';
+      })
+    };
+    return SCENE;
+  }
+
+  // The scene in (0, 0, w, h) with the runner at heroAt of the width, mid-jump under a gem, and the
+  // label in bouncing letters titleTop art pixels down.
+  function drawScene(c, w, h, heroAt, titleTop, label) {
+    var S = sceneSprites(), p = h / ROWS, wa = w / p;
+    var heroX = Math.round(wa * heroAt), heroMid = heroX + 6;
+    var k0 = Math.ceil((heroMid - FIRST_ROCK - 4.5) / SPACING);
+    var scroll = FIRST_ROCK + 4.5 + k0 * SPACING - heroMid - 1;   // just before the top of the jump
+    var t = scroll / 16;
+    c.save();
+    c.beginPath();
+    c.rect(0, 0, w, h);
+    c.clip();
+    c.scale(p, p);
+    c.imageSmoothingEnabled = false;
+    for (var i = 0; i < SKY.length; i++) {
+      c.fillStyle = SKY[i];
+      c.fillRect(0, i * 9, wa, (i === SKY.length - 1 ? GROUND : (i + 1) * 9) - i * 9);
+    }
+    for (var bx = -((t * 2) % 120); bx < wa; bx += 120) {
+      c.drawImage(S.cloud, bx + 8, 5);
+      c.drawImage(S.cloudSmall, bx + 62, 15);
+      c.drawImage(S.cloudSmall, bx + 95, 3);
+    }
+    [[S.hillsFar, t * 4], [S.hillsNear, t * 8], [S.ground, scroll]].forEach(function (s, n) {
+      var img = s[0], y = n === 2 ? GROUND - 1 : GROUND - img.height;
+      for (var x = -(s[1] % img.width); x < wa; x += img.width) c.drawImage(img, x, y);
+    });
+    for (var k = Math.floor((scroll - 60 - FIRST_ROCK) / SPACING); k <= Math.ceil((scroll + wa - FIRST_ROCK) / SPACING); k++) {
+      var x = FIRST_ROCK + k * SPACING - scroll, f = ((k % 3) + 3) % 3;
+      c.drawImage(S.flowers[f], x + 28, GROUND - 4);
+      c.drawImage(S.flowers[(f + 1) % 3], x + 43, GROUND - 4);
+      c.drawImage(S.rock, x, GROUND - 6);
+      if (heroMid - (x + 4.5) < 0) c.drawImage(S.gem, x + 1, 23);
+    }
+    var world = heroMid + scroll, near = Math.round((world - FIRST_ROCK - 4.5) / SPACING);
+    var u = (world - (FIRST_ROCK + 4.5 + near * SPACING)) / JUMP_HALF;
+    var lift = Math.abs(u) < 1 ? JUMP_H * (1 - u * u) : 0;
+    c.fillStyle = 'rgba(0,0,0,0.19)';
+    var sw = 8 - lift * 0.4;
+    c.fillRect(heroMid - sw / 2, GROUND, sw, 1);
+    c.drawImage(lift > 0.5 ? S.jump : S.runA, heroX, Math.round(GROUND - 12 - lift));
+
+    var word = fontText(label);
+    if (word) {
+      var x0 = 0, xs = [], letters = [], n = 0;
+      for (i = 0; i < word.length; i++) {
+        if (word.charAt(i) === ' ') { x0 += 4; continue; }
+        var col = GAME_PALETTE[n++ % GAME_PALETTE.length];
+        letters.push(pixelWord(word.charAt(i), col, mix(col, '#ffffff', 0.45), '#ffffff', '#8022324a'));
+        xs.push(x0);
+        x0 += 6;
+      }
+      var left = Math.round((wa - (x0 + 1) * 2) / 2);
+      letters.forEach(function (img, j) {
+        var bob = Math.round(Math.sin(t * 3.4 - j * 0.7) * 1.2);
+        c.drawImage(img, left + xs[j] * 2, titleTop + bob, img.width * 2, img.height * 2);
+      });
+    }
+    c.restore();
+    if (!word) {
+      c.font = 'bold ' + Math.round(h * 0.17) + 'px ' + SANS;
+      c.textAlign = 'center';
+      c.lineWidth = h * 0.03;
+      c.strokeStyle = '#22324a';
+      c.strokeText(label, w / 2, h * 0.27);
+      c.fillStyle = '#ffffff';
+      c.fillText(label, w / 2, h * 0.27);
+    }
   }
 
   // ---- state --------------------------------------------------------------------------------------
@@ -699,11 +996,11 @@
 
   var HAND_BOX;
 
-  // The pointing hand, fingertip at (0, 0): index finger up, three curled fingers, palm and thumb.
-  function drawHand() {
+  // The pointing hand, fingertip at (0, 0): index finger up, three curled fingers, palm and thumb. The
+  // menu and the Games channel each have one.
+  function drawHand(cv) {
     var u = HAND_UNIT;
     HAND_BOX = { ox: Math.ceil(17 * u + 6), oy: 6, w: Math.ceil(46 * u + 12), h: Math.ceil(62 * u + 12) };
-    var cv = $('hand');
     cv.width = HAND_BOX.w;
     cv.height = HAND_BOX.h;
     cv.style.transformOrigin = HAND_BOX.ox + 'px ' + HAND_BOX.oy + 'px';
@@ -915,6 +1212,473 @@
     setTimeout(function () { if (!introUp) $('intro').className = ''; }, 700);
   }
 
+  // ---- Games channel ------------------------------------------------------------------------------
+
+  // The channel's start screen, after wii-tv's GamesView: the meadow as a header, the games as
+  // cartridges on a shelf, the focused one's name, and the buttons Wii Menu, RetroArch and Play. Like
+  // the menu, it is painted once and moves by CSS transitions.
+
+  var GS = { HEADER_H: 300, SHELF_Y: 632, CART_PX: 8, PITCH: 250, BAND_Y: 892, BTN_Y: 986, BTN_H: 116,
+    BTN_X: [500, 960, 1420], BTN_W: [460, 380, 460] };
+  var PILL_MENU = 0, PILL_RETRO = 1, PILL_PLAY = 2, PILL_M = 30;
+  // The remote's colour buttons as tools/games.py --setup maps them.
+  var REMOTE = [['#e53935', 'Start'], ['#43a047', 'Select'], ['#fdd835', 'L'], ['#1e88e5', 'R']];
+  var LAST_PLAYED = 'wiiwebos.lastPlayed';
+  var shelf = { open: false, built: false, focus: 0, onShelf: false, button: PILL_PLAY, launching: false,
+    slots: [], pills: [] };
+
+  function shelfGames() { return GAMES ? GAMES.games : []; }
+  function shelfReady() { return !!GAMES && GAMES.ready; }
+
+  function pillEnabled(b) {
+    return b === PILL_MENU || shelfReady() && (b === PILL_RETRO || shelfGames().length > 0);
+  }
+
+  // The stripes, the shelf, the band with its blue arc and the meadow header: all that holds still.
+  function drawShelfBackdrop(cv) {
+    var c = cv.getContext('2d'), w = 1920, h = 1080, g, y;
+    c.fillStyle = '#f4f4f4';
+    c.fillRect(0, 0, w, h);
+    c.fillStyle = '#ececec';
+    for (y = GS.HEADER_H; y < h; y += 10) c.fillRect(0, y, w, 4);
+    g = c.createLinearGradient(0, GS.SHELF_Y, 0, GS.SHELF_Y + 22);
+    g.addColorStop(0, '#ffffff');
+    g.addColorStop(1, '#d3d3d3');
+    c.fillStyle = g;
+    traceRoundRect(c, 60, GS.SHELF_Y, w - 60, GS.SHELF_Y + 22, 11);
+    c.fill();
+    g = c.createLinearGradient(0, GS.SHELF_Y + 22, 0, GS.SHELF_Y + 42);
+    g.addColorStop(0, 'rgba(0,0,0,0.14)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = g;
+    c.fillRect(80, GS.SHELF_Y + 22, w - 160, 20);
+    g = c.createLinearGradient(0, GS.HEADER_H, 0, GS.HEADER_H + 26);
+    g.addColorStop(0, 'rgba(0,0,0,0.19)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = g;
+    c.fillRect(0, GS.HEADER_H, w, 26);
+
+    function arc(dy) {
+      c.beginPath();
+      c.moveTo(0, GS.BAND_Y + 26 + dy);
+      c.quadraticCurveTo(w / 2, GS.BAND_Y - 26 + dy, w, GS.BAND_Y + 26 + dy);
+    }
+    arc(-8);
+    c.strokeStyle = 'rgba(0,0,0,0.06)';
+    c.lineWidth = 22;
+    c.stroke();
+    arc(0);
+    c.lineTo(w, h);
+    c.lineTo(0, h);
+    c.closePath();
+    g = c.createLinearGradient(0, GS.BAND_Y - 26, 0, h);
+    g.addColorStop(0, '#f3f3f3');
+    g.addColorStop(1, '#d6d6d6');
+    c.fillStyle = g;
+    c.fill();
+    arc(0);
+    c.strokeStyle = BLUE_CSS;
+    c.lineWidth = 4;
+    c.stroke();
+    arc(4);
+    c.strokeStyle = '#ffffff';
+    c.lineWidth = 2;
+    c.stroke();
+
+    drawScene(c, w, GS.HEADER_H, 0.16, 4, T.games);
+    c.fillStyle = BLUE_CSS;
+    c.fillRect(0, GS.HEADER_H - 5, w, 5);
+  }
+
+  // A gear of radius r: eight teeth round a ring.
+  function gearCanvas(r, color) {
+    var cv = makeCanvas(2 * r + 2, 2 * r + 2), c = cv.getContext('2d');
+    c.translate(r + 1, r + 1);
+    c.scale(r, r);
+    c.fillStyle = color;
+    c.beginPath();
+    c.arc(0, 0, 0.72, 0, Math.PI * 2);
+    c.fill();
+    for (var i = 0; i < 8; i++) {
+      c.save();
+      c.rotate(i * Math.PI / 4);
+      traceRoundRect(c, -0.17, -1, 0.17, -0.55, 0.06);
+      c.fill();
+      c.restore();
+    }
+    c.globalCompositeOperation = 'destination-out';
+    c.beginPath();
+    c.arc(0, 0, 0.32, 0, Math.PI * 2);
+    c.fill();
+    return cv;
+  }
+
+  // One of the start screen's buttons: its body, or (focused) the blue border, glow and lettering
+  // that fade in over it.
+  function paintPill(cv, b, focused) {
+    var bw = GS.BTN_W[b], bh = GS.BTN_H, rad = bh / 2, on = pillEnabled(b), k;
+    var label = [T.wiiMenu, 'RetroArch', T.play][b];
+    var c = cv.getContext('2d');
+    c.clearRect(0, 0, cv.width, cv.height);
+    c.save();
+    c.translate(PILL_M, PILL_M);
+    traceRoundRect(c, 0, 0, bw, bh, rad);
+    if (focused) {
+      for (k = 3; k >= 1; k--) {
+        c.strokeStyle = rgba(BLUE, 64 / k / 255);
+        c.lineWidth = 4.5 + k * 5;
+        c.stroke();
+      }
+      c.strokeStyle = BLUE_CSS;
+      c.lineWidth = 6;
+      c.stroke();
+    } else {
+      var g = c.createLinearGradient(0, 0, 0, bh);
+      g.addColorStop(0, '#ffffff');
+      g.addColorStop(1, '#e9e9e9');
+      c.fillStyle = g;
+      c.fill();
+      c.strokeStyle = BORDER;
+      c.lineWidth = 4.5;
+      c.stroke();
+    }
+    var ink = focused ? '#2c9ed6' : on ? '#6a6a6a' : '#c6c6c6';
+    c.font = 'bold ' + (b === PILL_RETRO ? 40 : 46) + 'px ' + SANS;
+    c.fillStyle = ink;
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    var tw = c.measureText(label).width, x = bw / 2;
+    if (b === PILL_RETRO) {
+      var gr = 23, gap = 14, left = bw / 2 - (2 * gr + gap + tw) / 2;
+      c.drawImage(gearCanvas(gr, ink), left - 1, bh / 2 - gr - 1);
+      x = left + 2 * gr + gap + tw / 2;
+    }
+    c.fillText(label, x, bh / 2 + 2);
+    c.restore();
+  }
+
+  // A shelf item: the game's box art when it has a cover, standing on the shelf like the box itself,
+  // otherwise the pixel cartridge with its coloured label. The item, its shadow and its focus glow take
+  // the size of what it shows.
+  var BOX_MAX_W = 220, BOX_MAX_H = 250;
+
+  function fillSlot(it, g, i, cover) {
+    var w, h, rad, c;
+    if (cover) {
+      var sc = Math.min(BOX_MAX_W / cover.naturalWidth, BOX_MAX_H / cover.naturalHeight);
+      w = Math.round(cover.naturalWidth * sc);
+      h = Math.round(cover.naturalHeight * sc);
+      rad = 8;
+    } else {
+      w = CART_W * GS.CART_PX;
+      h = CART_H * GS.CART_PX;
+      rad = 18;
+    }
+    it.slot.style.left = (960 + i * GS.PITCH - w / 2) + 'px';
+    it.slot.style.top = (GS.SHELF_Y - h) + 'px';
+    it.slot.style.width = w + 'px';
+    it.slot.style.height = h + 'px';
+
+    it.shadow.width = w;
+    it.shadow.height = 16;
+    it.shadow.style.top = (h - 8) + 'px';
+    c = it.shadow.getContext('2d');
+    c.fillStyle = 'rgba(0,0,0,0.15)';
+    c.beginPath();
+    c.ellipse(w / 2, 8, w * 0.42, 6, 0, 0, Math.PI * 2);
+    c.fill();
+
+    it.art.width = w;
+    it.art.height = h;
+    c = it.art.getContext('2d');
+    if (cover) {
+      traceRoundRect(c, 0, 0, w, h, rad);
+      c.save();
+      c.clip();
+      c.drawImage(cover, 0, 0, w, h);
+      c.restore();
+      c.strokeStyle = 'rgba(0,0,0,0.35)';
+      c.lineWidth = 2;
+      c.stroke();
+    } else {
+      c.imageSmoothingEnabled = false;
+      c.drawImage(cartridge(g.color || GAME_PALETTE[i % GAME_PALETTE.length], g.title), 0, 0, w, h);
+    }
+
+    it.glow.width = w + 40;
+    it.glow.height = h + 40;
+    c = it.glow.getContext('2d');
+    traceRoundRect(c, 12, 12, w + 28, h + 28, rad + 4);
+    for (var k = 3; k >= 1; k--) {
+      c.strokeStyle = rgba(BLUE, 64 / k / 255);
+      c.lineWidth = 4.5 + k * 5;
+      c.stroke();
+    }
+    c.strokeStyle = BLUE_CSS;
+    c.lineWidth = 5;
+    c.stroke();
+  }
+
+  function buildShelf() {
+    drawShelfBackdrop($('gBg'));
+    drawHand($('gHand'));
+
+    var strip = $('cartStrip'), cw = CART_W * GS.CART_PX, ch = CART_H * GS.CART_PX;
+    shelfGames().forEach(function (g, i) {
+      var it = { slot: document.createElement('div'), shadow: makeCanvas(1, 1), art: makeCanvas(1, 1),
+        glow: makeCanvas(1, 1) };
+      var slot = it.slot, cart = document.createElement('div');
+      slot.className = 'slot';
+      cart.className = 'cart';
+      it.shadow.className = 'shadow';
+      it.shadow.style.left = it.art.style.left = it.art.style.top = '0px';
+      it.glow.className = 'glow';
+      it.glow.style.left = it.glow.style.top = '-20px';
+      cart.appendChild(it.art);
+      cart.appendChild(it.glow);
+      slot.appendChild(it.shadow);
+      slot.appendChild(cart);
+      // A game with a cover waits for it, so the cartridge doesn't flash first; without one, or if it
+      // won't load, the cartridge.
+      if (!g.cover) fillSlot(it, g, i, null);
+      loadImage(g.cover, function (img) { fillSlot(it, g, i, img.ready ? img : null); });
+      slot.addEventListener('mouseover', function () {
+        if (shelf.launching || (shelf.onShelf && shelf.focus === i)) return;
+        shelf.onShelf = true;
+        shelf.focus = i;
+        sound('move');
+        showShelf();
+      });
+      slot.addEventListener('click', function () {
+        shelf.onShelf = true;
+        shelf.focus = i;
+        showShelf();
+        startGame();
+      });
+      strip.appendChild(slot);
+      shelf.slots.push(slot);
+    });
+
+    if (!shelfGames().length) {
+      // An empty slot with a plus where the first cartridge will stand.
+      var empty = makeCanvas(cw + 20, ch + 20), ec = empty.getContext('2d');
+      empty.style.left = (960 - cw / 2 - 10) + 'px';
+      empty.style.top = (GS.SHELF_Y - ch - 10) + 'px';
+      ec.strokeStyle = '#c6c6c6';
+      ec.lineWidth = 5;
+      if (ec.setLineDash) ec.setLineDash([18, 12]);
+      traceRoundRect(ec, 10, 10, cw + 10, ch + 10, 14);
+      ec.stroke();
+      if (ec.setLineDash) ec.setLineDash([]);
+      ec.lineWidth = 10;
+      ec.lineCap = 'round';
+      ec.beginPath();
+      ec.moveTo((cw + 20) / 2 - 34, (ch + 20) / 2);
+      ec.lineTo((cw + 20) / 2 + 34, (ch + 20) / 2);
+      ec.moveTo((cw + 20) / 2, (ch + 20) / 2 - 34);
+      ec.lineTo((cw + 20) / 2, (ch + 20) / 2 + 34);
+      ec.stroke();
+      strip.appendChild(empty);
+    }
+
+    var legend = $('gLegend');
+    REMOTE.forEach(function (r) {
+      var item = document.createElement('span');
+      item.className = 'item';
+      item.innerHTML = '<i class="dot" style="background:' + r[0] + '"></i>' + r[1];
+      legend.appendChild(item);
+    });
+    [T.keyA, T.keyB, T.keyMenu].forEach(function (s) {
+      var item = document.createElement('span');
+      item.className = 'item key';
+      item.textContent = s;
+      legend.appendChild(item);
+    });
+
+    var pills = $('gPills');
+    [PILL_MENU, PILL_RETRO, PILL_PLAY].forEach(function (b) {
+      var w = GS.BTN_W[b] + 2 * PILL_M, h = GS.BTN_H + 2 * PILL_M;
+      var pill = document.createElement('div');
+      pill.className = 'pill';
+      pill.style.left = (GS.BTN_X[b] - w / 2) + 'px';
+      pill.style.top = (GS.BTN_Y - h / 2) + 'px';
+      pill.style.width = w + 'px';
+      pill.style.height = h + 'px';
+      var body = makeCanvas(w, h), glow = makeCanvas(w, h);
+      body.style.left = body.style.top = glow.style.left = glow.style.top = '0px';
+      glow.className = 'glow';
+      paintPill(body, b, false);
+      paintPill(glow, b, true);
+      pill.appendChild(body);
+      pill.appendChild(glow);
+      pill.addEventListener('mouseover', function () {
+        if (shelf.launching || !pillEnabled(b) || (!shelf.onShelf && shelf.button === b)) return;
+        shelf.onShelf = false;
+        shelf.button = b;
+        sound('move');
+        showShelf();
+      });
+      pill.addEventListener('click', function () {
+        if (!pillEnabled(b)) return;
+        shelf.onShelf = false;
+        shelf.button = b;
+        chooseShelf();
+      });
+      pills.appendChild(pill);
+      shelf.pills.push(pill);
+    });
+    shelf.built = true;
+  }
+
+  function shelfHandTransform() {
+    var tx, ty;
+    if (shelf.onShelf) {
+      tx = 960 + 72;
+      ty = GS.SHELF_Y - 86;
+    } else {
+      tx = GS.BTN_X[shelf.button] + GS.BTN_W[shelf.button] * 0.28;
+      ty = GS.BTN_Y + 26;
+    }
+    return 'translate3d(' + (tx - HAND_BOX.ox) + 'px,' + (ty - HAND_BOX.oy) + 'px,0) rotate(-8deg)';
+  }
+
+  // Shows the focus: the lifted cartridge, the scroll, the button, the hand and the game's name.
+  function showShelf() {
+    var games = shelfGames(), n = games.length, g = games[shelf.focus];
+    shelf.slots.forEach(function (s, i) {
+      s.className = 'slot' + (shelf.onShelf && i === shelf.focus ? ' focused' : '');
+    });
+    shelf.pills.forEach(function (p, b) {
+      p.className = 'pill' + (!shelf.onShelf && b === shelf.button ? ' focused' : '');
+    });
+    $('cartStrip').style.transform = 'translate3d(' + (-shelf.focus * GS.PITCH) + 'px,0,0)';
+    $('gTitle').textContent = n ? g.title : T.gamesEmptyTitle;
+    $('gSub').textContent = !n ? T.gamesEmptyBody : !shelfReady() ? T.gamesMissing : g.system;
+    $('gSub').className = n && !shelfReady() ? 'warn' : '';
+    $('gLegend').style.visibility = n && shelfReady() ? 'visible' : 'hidden';
+    $('gHand').style.transform = shelfHandTransform();
+  }
+
+  function openShelf() {
+    if (!shelf.built) buildShelf();
+    var games = shelfGames(), last = null;
+    try { last = localStorage.getItem(LAST_PLAYED); } catch (e) { /* no storage */ }
+    shelf.focus = 0;
+    games.forEach(function (g, i) { if (g.rom === last) shelf.focus = i; });
+    shelf.onShelf = games.length > 0;
+    shelf.button = shelf.onShelf && shelfReady() ? PILL_PLAY : shelfReady() ? PILL_RETRO : PILL_MENU;
+    shelf.launching = false;
+    shelf.open = true;
+    jump($('cartStrip'), 'translate3d(' + (-shelf.focus * GS.PITCH) + 'px,0,0)');
+    showShelf();
+    jump($('gHand'), shelfHandTransform());
+    $('gVeil').className = '';
+    var el = $('games');
+    el.className = 'shown';
+    el.offsetWidth;   // eslint-disable-line no-unused-expressions -- start the fade from transparent
+    el.className = 'shown open';
+    // Once covered, the menu below stops being composited.
+    setTimeout(function () { if (shelf.open) $('stage').className = 'shelf-open'; }, 320);
+  }
+
+  function closeShelf() {
+    shelf.open = false;
+    shelf.launching = false;
+    $('stage').className = '';
+    $('games').className = 'shown';
+    setTimeout(function () { if (!shelf.open) $('games').className = ''; }, 320);
+  }
+
+  function shelfMove(d) {
+    if (shelf.onShelf) {
+      var n = Math.max(0, Math.min(shelfGames().length - 1, shelf.focus + d));
+      if (n === shelf.focus) return;
+      shelf.focus = n;
+    } else {
+      var b = shelf.button + d;
+      while (b >= PILL_MENU && b <= PILL_PLAY && !pillEnabled(b)) b += d;
+      if (b < PILL_MENU || b > PILL_PLAY) return;
+      shelf.button = b;
+    }
+    sound('move');
+    showShelf();
+  }
+
+  function shelfKey(k) {
+    if (shelf.launching) return;
+    if (k === KEY.LEFT) shelfMove(-1);
+    else if (k === KEY.RIGHT) shelfMove(1);
+    else if (k === KEY.UP) {
+      if (shelf.onShelf || !shelfGames().length) return;
+      shelf.onShelf = true;
+      sound('move');
+      showShelf();
+    } else if (k === KEY.DOWN) {
+      if (!shelf.onShelf) return;
+      shelf.onShelf = false;
+      shelf.button = shelfReady() ? PILL_PLAY : PILL_MENU;
+      sound('move');
+      showShelf();
+    } else if (k === KEY.OK) chooseShelf();
+    else if (k === KEY.PLAY) startGame();
+    else if (k === KEY.BACK || k === KEY.ESC || k === KEY.BACKSPACE) {
+      sound('back');
+      closeShelf();
+    }
+  }
+
+  function chooseShelf() {
+    if (shelf.onShelf || shelf.button === PILL_PLAY) startGame();
+    else if (shelf.button === PILL_MENU) {
+      sound('back');
+      closeShelf();
+    } else openRetroArch();
+  }
+
+  function startGame() {
+    var games = shelfGames();
+    if (!games.length || !shelfReady() || shelf.launching) {
+      sound('back');
+      return;
+    }
+    var g = games[shelf.focus];
+    sound('start');
+    shelf.launching = true;
+    shelf.slots[shelf.focus].className += ' hop';
+    $('gVeil').className = 'on';
+    try { localStorage.setItem(LAST_PLAYED, g.rom); } catch (e) { /* no storage */ }
+    setTimeout(function () { playGame(g); }, 600);
+  }
+
+  // RetroArch already open would only come forward with its old game, so it is closed first.
+  function playGame(g) {
+    luna('luna://com.webos.applicationManager/closeByAppId', { id: GAMES.app }, function (res) {
+      setTimeout(function () {
+        luna('luna://com.webos.applicationManager/launch', { id: GAMES.app, params: { core: g.core, rom: g.rom } },
+          function (r) { if (r.returnValue === false) returnFromGame(); });
+      }, res.returnValue === false ? 0 : 1200);
+    });
+  }
+
+  function openRetroArch() {
+    sound('select');
+    shelf.launching = true;
+    $('gVeil').className = 'on';
+    setTimeout(function () {
+      luna('luna://com.webos.applicationManager/launch', { id: GAMES.app }, function (r) {
+        if (r.returnValue === false) returnFromGame();
+      });
+    }, 400);
+  }
+
+  // Back from RetroArch, or it couldn't start: the shelf fades in again.
+  function returnFromGame() {
+    if (!shelf.launching) return;
+    shelf.launching = false;
+    shelf.slots.forEach(function (s) { s.className = s.className.replace(' hop', ''); });
+    $('gVeil').className = '';
+  }
+
   // ---- input --------------------------------------------------------------------------------------
 
   function move(dx, dy) {
@@ -974,6 +1738,11 @@
       return;
     }
     var ch = focus >= 0 ? channels[focus] : null;
+    if (ch && ch.app.special === 'games') {
+      sound('select');
+      openShelf();
+      return;
+    }
     var id = focus === BTN_SETTINGS ? CFG.settingsApp : focus === BTN_SD ? CFG.mediaApp : ch && ch.app.id;
     if (!id) return;
     sound('select');
@@ -982,7 +1751,7 @@
 
   function onKey(e) {
     var k = e.keyCode;
-    var known = [KEY.LEFT, KEY.UP, KEY.RIGHT, KEY.DOWN, KEY.OK, KEY.BACK, KEY.ESC, KEY.BACKSPACE];
+    var known = [KEY.LEFT, KEY.UP, KEY.RIGHT, KEY.DOWN, KEY.OK, KEY.BACK, KEY.ESC, KEY.BACKSPACE, KEY.PLAY];
     if (known.indexOf(k) < 0) return;
     e.preventDefault();
     if (introUp) {
@@ -993,6 +1762,7 @@
       }
       return;
     }
+    if (shelf.open) { shelfKey(k); return; }
     if (menuOpen) { menuKey(k); return; }
     if (k === KEY.LEFT) move(-1, 0);
     else if (k === KEY.RIGHT) move(1, 0);
@@ -1095,7 +1865,7 @@
     drawArrow($('arrowR'));
     drawArrow($('arrowL'));
     drawColon();
-    drawHand();
+    drawHand($('hand'));
     jump($('hand'), handTransform());
     drawClock(true);
     setInterval(function () {
@@ -1117,10 +1887,13 @@
     hookPointer();
     document.addEventListener('webOSRelaunch', function () {
       if (menuOpen) closeMenu();
+      returnFromGame();
       drawClock(true);
     });
     document.addEventListener('visibilitychange', function () {
-      if (!document.hidden) drawClock(true);
+      if (document.hidden) return;
+      returnFromGame();
+      drawClock(true);
     });
     if (CFG.intro !== false) showIntro();
   }
